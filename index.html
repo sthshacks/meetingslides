@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ST Hacks / Meetings</title>
+
+<!-- Fonts: Archivo (display + body) + IBM Plex Mono (structural chrome) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+    /* ===========================================
+       THEME — matches Grid Mono system from meeting 1
+       =========================================== */
+    :root {
+        --paper: #f2f2ee;
+        --paper-2: #e9e9e3;
+        --ink: #0d0d0c;
+        --grey: #6b6b64;
+        --grey-light: #a7a79f;
+        --line: rgba(13, 13, 12, 0.18);
+        --line-soft: rgba(13, 13, 12, 0.10);
+
+        --font-display: 'Archivo', sans-serif;
+        --font-mono: 'IBM Plex Mono', monospace;
+
+        --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+        --duration-normal: 0.7s;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+        min-height: 100%;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: var(--font-display);
+    }
+
+    body {
+        position: relative;
+        overflow-x: hidden;
+        padding: 72px;
+    }
+
+    /* Faint dot/grid background — same feel as .grid-overlay */
+    body::before {
+        content: "";
+        position: fixed; inset: 0; pointer-events: none; z-index: 0;
+        background-image:
+            linear-gradient(var(--line-soft) 1px, transparent 1px),
+            linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+        background-size: 120px 120px;
+    }
+
+    .page { position: relative; z-index: 1; max-width: 1600px; margin: 0 auto; }
+
+    /* ===========================================
+       CHROME LABELS (top/bottom corners)
+       =========================================== */
+    .chrome-label {
+        position: fixed;
+        font-family: var(--font-mono);
+        font-size: 14px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--grey);
+        z-index: 2;
+    }
+    .chrome-label.tl { top: 32px; left: 32px; }
+    .chrome-label.tr { top: 32px; right: 32px; text-align: right; }
+    .chrome-label.bl { bottom: 32px; left: 32px; }
+    .chrome-label.br { bottom: 32px; right: 32px; }
+
+    /* ===========================================
+       HERO — mirrors slide 1's title stack
+       =========================================== */
+    .hero {
+        border-bottom: 1px solid var(--ink);
+        padding: 60px 0 80px;
+        margin-bottom: 80px;
+    }
+    .eyebrow {
+        font-family: var(--font-mono);
+        font-size: 16px;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        color: var(--grey);
+        margin-bottom: 24px;
+    }
+    .title-hero {
+        font-size: clamp(80px, 14vw, 200px);
+        line-height: 0.92;
+        letter-spacing: -0.02em;
+        font-weight: 900;
+    }
+    .tagline-row {
+        margin-top: 32px;
+        font-family: var(--font-mono);
+        font-size: clamp(16px, 1.6vw, 22px);
+        letter-spacing: 0.06em;
+        color: var(--ink);
+        display: flex;
+        gap: 32px;
+        flex-wrap: wrap;
+    }
+    .tagline-row span::before { content: "/ "; color: var(--grey); }
+
+    /* ===========================================
+       SECTION HEADER
+       =========================================== */
+    .section-header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: 40px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid var(--line);
+    }
+    .section-title {
+        font-size: clamp(40px, 4vw, 64px);
+        font-weight: 900;
+        letter-spacing: -0.01em;
+    }
+    .section-count {
+        font-family: var(--font-mono);
+        font-size: 16px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--grey);
+    }
+
+    /* ===========================================
+       MEETING CARD GRID
+       =========================================== */
+    .meetings {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+        gap: 0;
+        border-top: 1px solid var(--line);
+    }
+    .meeting-card {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 44px 40px;
+        min-height: 280px;
+        text-decoration: none;
+        color: var(--ink);
+        background: transparent;
+        border-right: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        transition: background 0.4s var(--ease-out-expo);
+    }
+    .meeting-card:hover { background: var(--paper-2); }
+    .meeting-card:hover .card-arrow { transform: translateX(10px); }
+
+    .card-index {
+        font-family: var(--font-mono);
+        font-size: 14px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--grey-light);
+        margin-bottom: 20px;
+    }
+    .card-title {
+        font-size: clamp(28px, 2.6vw, 40px);
+        font-weight: 900;
+        line-height: 1.05;
+        letter-spacing: -0.01em;
+        margin-bottom: 12px;
+    }
+    .card-sub {
+        font-family: var(--font-mono);
+        font-size: 13px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--grey);
+        margin-bottom: 28px;
+        word-break: break-all;
+    }
+    .card-cta {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 14px;
+        font-family: var(--font-mono);
+        font-size: 15px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--ink);
+        padding-bottom: 6px;
+        border-bottom: 2px solid var(--ink);
+        width: fit-content;
+    }
+    .card-arrow { transition: transform 0.3s var(--ease-out-expo); }
+
+    /* ===========================================
+       STATES: loading / empty / error
+       =========================================== */
+    .state {
+        grid-column: 1 / -1;
+        padding: 60px 40px;
+        border-right: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        font-family: var(--font-mono);
+        font-size: 15px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--grey);
+    }
+    .state.error { color: var(--ink); }
+    .state code {
+        font-family: var(--font-mono);
+        background: var(--paper-2);
+        padding: 2px 8px;
+        border: 1px solid var(--line);
+        text-transform: none;
+        letter-spacing: 0;
+    }
+
+    /* ===========================================
+       FOOTER
+       =========================================== */
+    .footer {
+        margin-top: 80px;
+        padding-top: 40px;
+        border-top: 1px solid var(--ink);
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        font-family: var(--font-mono);
+        font-size: 14px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--grey);
+    }
+
+    /* ===========================================
+       REVEAL ANIMATION
+       =========================================== */
+    .reveal {
+        opacity: 0;
+        transform: translateY(26px);
+        transition: opacity var(--duration-normal) var(--ease-out-expo),
+                    transform var(--duration-normal) var(--ease-out-expo);
+    }
+    .reveal.in { opacity: 1; transform: translateY(0); }
+
+    @media (prefers-reduced-motion: reduce) {
+        .reveal { transition-duration: 0.2s !important; }
+    }
+
+    @media (max-width: 720px) {
+        body { padding: 32px 24px 80px; }
+        .chrome-label { display: none; }
+        .hero { padding: 20px 0 48px; margin-bottom: 48px; }
+        .meetings { grid-template-columns: 1fr; }
+        .meeting-card { border-right: none; }
+    }
+</style>
+</head>
+<body>
+
+<span class="chrome-label tl">Computer&nbsp;Science&nbsp;Club</span>
+<span class="chrome-label tr">Meetings&nbsp;Archive</span>
+<span class="chrome-label bl">ST Hacks</span>
+<span class="chrome-label br">2026</span>
+
+<main class="page">
+
+    <!-- ============ HERO ============ -->
+    <header class="hero">
+        <div class="eyebrow reveal">All Meetings / Slide Decks</div>
+        <h1 class="title-hero reveal">ST<br>HACKS</h1>
+        <div class="tagline-row reveal">
+            <span>Programming</span>
+            <span>Competitions</span>
+            <span>Hackathons</span>
+        </div>
+    </header>
+
+    <!-- ============ MEETINGS ============ -->
+    <section>
+        <div class="section-header reveal">
+            <h2 class="section-title">Meetings</h2>
+            <span class="section-count" id="sectionCount">Loading...</span>
+        </div>
+
+        <div class="meetings" id="meetingsGrid">
+            <div class="state" id="loadingState">Fetching meetings...</div>
+        </div>
+    </section>
+
+    <footer class="footer reveal">
+        <span>ST Hacks / Computer Science Club</span>
+        <span id="footerRepo">github pages</span>
+    </footer>
+</main>
+
+<script>
+    /* ===========================================
+       CONFIG — override auto-detection if needed
+       =========================================== */
+    const CONFIG = {
+        // Set these manually if auto-detection from the URL fails
+        // (for example, when hosting on a custom domain).
+        githubUser: null,
+        githubRepo: null,
+        // Fallback list used when the GitHub API can't be reached
+        // (for example, when opening the file locally without deploying).
+        fallbackMeetings: [
+            { folder: 'meeting 1', file: 'st-hacks.html' },
+            { folder: 'meeting 2', file: 'index.html' }
+        ]
+    };
+
+    /* ===========================================
+       GITHUB REPO AUTO-DETECTION
+       When deployed to <user>.github.io/<repo>/, we can figure out
+       who owns the repo just by reading the URL.
+       =========================================== */
+    function detectRepo() {
+        if (CONFIG.githubUser && CONFIG.githubRepo) {
+            return { user: CONFIG.githubUser, repo: CONFIG.githubRepo };
+        }
+        const host = window.location.hostname;
+        const pathParts = window.location.pathname.split('/').filter(Boolean);
+        if (host.endsWith('.github.io')) {
+            const user = host.replace('.github.io', '');
+            // user.github.io/repo/ -> repo is first path segment
+            // user.github.io/ (root user page) -> repo is `${user}.github.io`
+            const repo = pathParts[0] || `${user}.github.io`;
+            return { user, repo };
+        }
+        return null;
+    }
+
+    /* ===========================================
+       FETCH MEETINGS
+       Uses the GitHub Contents API to enumerate top-level folders,
+       then peeks inside each one to find an HTML file to link to.
+       =========================================== */
+    async function fetchMeetings() {
+        const info = detectRepo();
+        if (!info) throw new Error('local');
+
+        const rootUrl = `https://api.github.com/repos/${info.user}/${info.repo}/contents/`;
+        const rootRes = await fetch(rootUrl);
+        if (!rootRes.ok) throw new Error(`Root fetch failed (${rootRes.status})`);
+        const rootEntries = await rootRes.json();
+
+        // Grab every top-level directory. We skip anything starting with '.'
+        // so hidden folders (.github, .git, etc.) don't show up as meetings.
+        const dirs = rootEntries.filter(e => e.type === 'dir' && !e.name.startsWith('.'));
+
+        // For each folder, look inside and pick an HTML file to link to.
+        // We prefer index.html if it exists; otherwise the first .html found.
+        const meetings = [];
+        for (const dir of dirs) {
+            try {
+                const subRes = await fetch(dir.url);
+                if (!subRes.ok) continue;
+                const subEntries = await subRes.json();
+                const htmls = subEntries.filter(e => e.type === 'file' && e.name.toLowerCase().endsWith('.html'));
+                if (!htmls.length) continue;
+                const chosen = htmls.find(f => f.name.toLowerCase() === 'index.html') || htmls[0];
+                meetings.push({ folder: dir.name, file: chosen.name });
+            } catch (err) { /* skip folders we can't read */ }
+        }
+        return { meetings, info };
+    }
+
+    /* ===========================================
+       RENDER
+       =========================================== */
+    function pretty(name) {
+        // "meeting 2" -> "Meeting 02" (zero-pad any trailing number)
+        return name.replace(/\b(\w)/g, m => m.toUpperCase())
+                   .replace(/(\d+)$/, (_, n) => n.padStart(2, '0'));
+    }
+
+    // Meetings list from the API isn't sorted — put "meeting 1", "meeting 2"...
+    // in numeric order so the newest meeting stays at the bottom.
+    function sortMeetings(list) {
+        return list.slice().sort((a, b) => {
+            const na = parseInt((a.folder.match(/\d+/) || ['0'])[0], 10);
+            const nb = parseInt((b.folder.match(/\d+/) || ['0'])[0], 10);
+            if (na !== nb) return na - nb;
+            return a.folder.localeCompare(b.folder);
+        });
+    }
+
+    function render(meetings, info) {
+        const grid = document.getElementById('meetingsGrid');
+        const count = document.getElementById('sectionCount');
+        const footer = document.getElementById('footerRepo');
+
+        grid.innerHTML = '';
+
+        if (info) footer.textContent = `${info.user}/${info.repo}`;
+
+        if (!meetings.length) {
+            grid.innerHTML = '<div class="state">No meetings found yet.</div>';
+            count.textContent = '00 total';
+            return;
+        }
+
+        const sorted = sortMeetings(meetings);
+        count.textContent = String(sorted.length).padStart(2, '0') + ' total';
+
+        sorted.forEach((m, i) => {
+            const a = document.createElement('a');
+            a.className = 'meeting-card reveal';
+            const href = encodeURI(m.folder) + '/' + encodeURI(m.file);
+            a.href = href;
+            a.innerHTML = `
+                <div>
+                    <div class="card-index">${String(i + 1).padStart(2, '0')} / ${String(sorted.length).padStart(2, '0')}</div>
+                    <h3 class="card-title">${pretty(m.folder)}</h3>
+                    <div class="card-sub">${m.folder} / ${m.file}</div>
+                </div>
+                <span class="card-cta">Open Deck <span class="card-arrow">&rarr;</span></span>
+            `;
+            grid.appendChild(a);
+        });
+
+        requestAnimationFrame(revealAll);
+    }
+
+    function renderFallback(msg) {
+        const count = document.getElementById('sectionCount');
+        const grid = document.getElementById('meetingsGrid');
+        const sorted = sortMeetings(CONFIG.fallbackMeetings);
+        count.textContent = String(sorted.length).padStart(2, '0') + ' total (offline)';
+        grid.innerHTML = '';
+
+        const state = document.createElement('div');
+        state.className = 'state error';
+        state.innerHTML = `${msg} &mdash; showing local fallback list. Deploy via GitHub Pages for automatic discovery.`;
+        grid.appendChild(state);
+
+        sorted.forEach((m, i) => {
+            const a = document.createElement('a');
+            a.className = 'meeting-card reveal';
+            const href = encodeURI(m.folder) + '/' + encodeURI(m.file);
+            a.href = href;
+            a.innerHTML = `
+                <div>
+                    <div class="card-index">${String(i + 1).padStart(2, '0')} / ${String(sorted.length).padStart(2, '0')}</div>
+                    <h3 class="card-title">${pretty(m.folder)}</h3>
+                    <div class="card-sub">${m.folder} / ${m.file}</div>
+                </div>
+                <span class="card-cta">Open Deck <span class="card-arrow">&rarr;</span></span>
+            `;
+            grid.appendChild(a);
+        });
+
+        requestAnimationFrame(revealAll);
+    }
+
+    /* ===========================================
+       REVEAL — fade+slide staggered per element
+       =========================================== */
+    function revealAll() {
+        document.querySelectorAll('.reveal').forEach((el, i) => {
+            setTimeout(() => el.classList.add('in'), 60 + i * 80);
+        });
+    }
+
+    /* ===========================================
+       BOOT
+       =========================================== */
+    (async () => {
+        try {
+            const { meetings, info } = await fetchMeetings();
+            render(meetings, info);
+        } catch (err) {
+            renderFallback(err.message === 'local'
+                ? 'Not deployed on GitHub Pages'
+                : `GitHub API unreachable`);
+        }
+    })();
+</script>
+</body>
+</html>

@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ST Hacks / Meeting 02</title>
+
+<!-- Fonts: Archivo (display + body) + IBM Plex Mono (structural chrome) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+    /* ===========================================
+       THEME — Grid Mono (monochrome Swiss-grid system)
+       Matches meeting 1 exactly.
+       =========================================== */
+    :root {
+        --paper: #f2f2ee;
+        --paper-2: #e9e9e3;
+        --ink: #0d0d0c;
+        --grey: #6b6b64;
+        --grey-light: #a7a79f;
+        --line: rgba(13, 13, 12, 0.18);
+        --line-soft: rgba(13, 13, 12, 0.10);
+
+        --font-display: 'Archivo', sans-serif;
+        --font-mono: 'IBM Plex Mono', monospace;
+
+        --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+        --duration-normal: 0.7s;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* ===========================================
+       MANDATORY FIXED 16:9 STAGE (viewport-base.css)
+       =========================================== */
+    html, body {
+        width: 100%; height: 100%; margin: 0; overflow: hidden;
+        background: var(--stage-bg, #000);
+    }
+    .deck-viewport {
+        position: fixed; inset: 0; overflow: hidden;
+        background: var(--stage-bg, #000);
+    }
+    .deck-stage {
+        position: absolute; left: 0; top: 0;
+        width: 1920px; height: 1080px; overflow: hidden;
+        transform-origin: 0 0;
+        background: var(--slide-bg, #fff);
+    }
+    .slide {
+        position: absolute; inset: 0;
+        width: 1920px; height: 1080px; overflow: hidden;
+        display: block; visibility: hidden; opacity: 0; pointer-events: none;
+        background: var(--slide-bg, #fff);
+    }
+    .slide.active, .slide.visible {
+        visibility: visible; opacity: 1; pointer-events: auto; z-index: 1;
+    }
+    img, video, canvas, svg { max-width: 100%; max-height: 100%; }
+    .deck-controls {
+        position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+        z-index: 1000;
+    }
+    @media print {
+        html, body { width: 1920px; height: auto; overflow: visible; background: #fff; }
+        .deck-viewport { position: static; overflow: visible; background: #fff; }
+        .deck-stage { position: static; width: auto; height: auto; transform: none !important; background: none; }
+        .slide {
+            position: relative; display: block !important; visibility: visible !important;
+            opacity: 1 !important; pointer-events: auto !important;
+            width: 1920px; height: 1080px; break-after: page; page-break-after: always;
+        }
+        .slide:last-child { break-after: auto; page-break-after: auto; }
+        .deck-controls { display: none !important; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; }
+    }
+
+    /* ===========================================
+       SLIDE BASE — Grid Mono system
+       =========================================== */
+    .slide { background: var(--paper); color: var(--ink); font-family: var(--font-display); }
+
+    .grid-overlay {
+        position: absolute; inset: 0; pointer-events: none;
+        background-image:
+            linear-gradient(var(--line-soft) 1px, transparent 1px),
+            linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+        background-size: 120px 120px;
+    }
+
+    .chrome-label {
+        position: absolute; font-family: var(--font-mono); font-size: 20px;
+        letter-spacing: 0.18em; text-transform: uppercase; color: var(--grey);
+    }
+    .chrome-label.tl { top: 72px; left: 72px; }
+    .chrome-label.tr { top: 72px; right: 72px; text-align: right; }
+    .chrome-label.bl { bottom: 72px; left: 72px; }
+    .chrome-label.br { bottom: 72px; right: 72px; }
+
+    .rule { position: absolute; left: 72px; right: 72px; height: 1px; background: var(--ink); }
+    .rule.top { top: 150px; }
+    .rule.bottom { bottom: 150px; }
+    .rule.soft { background: var(--line); }
+
+    /* ===========================================
+       ANIMATIONS — staggered reveal on .visible
+       =========================================== */
+    .reveal {
+        opacity: 0; transform: translateY(26px);
+        transition: opacity var(--duration-normal) var(--ease-out-expo),
+                    transform var(--duration-normal) var(--ease-out-expo);
+    }
+    .slide.visible .reveal { opacity: 1; transform: translateY(0); }
+    .reveal:nth-child(1) { transition-delay: 0.05s; }
+    .reveal:nth-child(2) { transition-delay: 0.2s; }
+    .reveal:nth-child(3) { transition-delay: 0.35s; }
+    .reveal:nth-child(4) { transition-delay: 0.5s; }
+    .reveal:nth-child(5) { transition-delay: 0.65s; }
+    .reveal:nth-child(6) { transition-delay: 0.8s; }
+
+    /* ===========================================
+       SLIDE 1 — TITLE
+       =========================================== */
+    .stack-title {
+        position: absolute; left: 72px; right: 72px; top: 0; bottom: 0;
+        display: flex; flex-direction: column; justify-content: center;
+    }
+    .eyebrow {
+        font-family: var(--font-mono); font-size: 24px; letter-spacing: 0.3em;
+        text-transform: uppercase; color: var(--grey); margin-bottom: 28px;
+    }
+    .title-hero {
+        font-size: 230px; line-height: 0.92; letter-spacing: -0.02em; font-weight: 900;
+    }
+    .tagline-row {
+        margin-top: 36px; font-family: var(--font-mono); font-size: 30px;
+        letter-spacing: 0.06em; color: var(--ink); display: flex; gap: 40px;
+    }
+    .tagline-row span::before { content: "/ "; color: var(--grey); }
+
+    /* ===========================================
+       WHAT WE'LL DO (agenda + setup grid)
+       Same layout as meeting 1.
+       =========================================== */
+    .wwd-wrap {
+        position: absolute; left: 72px; right: 72px; top: 260px; bottom: 150px;
+        display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+    }
+    .wwd-item {
+        position: relative; padding: 56px 64px 0 0; border-right: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        display: flex; flex-direction: column; justify-content: center;
+    }
+    .wwd-item:nth-child(2) { border-right: none; padding-left: 64px; padding-right: 0; }
+    .wwd-item:nth-child(4) { border-right: none; padding-left: 64px; padding-right: 0; }
+    .wwd-item:nth-child(3), .wwd-item:nth-child(4) { border-bottom: none; }
+    .wwd-index {
+        font-family: var(--font-mono); font-size: 22px; letter-spacing: 0.1em;
+        color: var(--grey-light); margin-bottom: 18px;
+    }
+    .wwd-text { font-size: 52px; font-weight: 900; line-height: 1.1; max-width: 640px; }
+    .wwd-sub {
+        margin-top: 18px; font-family: var(--font-mono); font-size: 22px;
+        letter-spacing: 0.06em; color: var(--grey); max-width: 620px;
+    }
+
+    /* ===========================================
+       EXPLAINER (Hello World / Operations)
+       =========================================== */
+    .explain-wrap {
+        position: absolute; left: 72px; right: 72px; top: 260px; bottom: 150px;
+        display: grid; grid-template-columns: 1fr 1fr; gap: 100px;
+    }
+    .explain-col {
+        display: flex; flex-direction: column; justify-content: center;
+        padding-right: 60px; border-right: 1px solid var(--line);
+    }
+    .explain-col:last-child { border-right: none; padding-right: 0; }
+    .explain-term { font-size: 72px; font-weight: 900; line-height: 1; margin-bottom: 28px; }
+    .explain-body {
+        font-family: var(--font-display); font-size: 30px; line-height: 1.55;
+        color: var(--ink); max-width: 640px; margin-bottom: 28px;
+    }
+    .code-block {
+        font-family: var(--font-mono); font-size: 22px; line-height: 1.6;
+        background: var(--paper-2); border: 1px solid var(--line);
+        padding: 22px 26px; color: var(--ink);
+        white-space: pre; overflow: hidden;
+    }
+    .code-block .comment { color: var(--grey); }
+
+    /* ===========================================
+       PRACTICE INTRO — big statement + link (signup-like)
+       =========================================== */
+    .intro-wrap {
+        position: absolute; left: 72px; right: 72px; top: 260px; bottom: 220px;
+        display: flex; flex-direction: column; justify-content: center;
+    }
+    .intro-heading { font-size: 128px; font-weight: 900; line-height: 1; margin-bottom: 40px; letter-spacing: -0.01em; }
+    .intro-body {
+        font-family: var(--font-display); font-weight: 400; font-size: 34px;
+        color: var(--ink); line-height: 1.5; max-width: 1200px; margin-bottom: 48px;
+    }
+    .intro-link {
+        display: inline-flex; align-items: center; gap: 18px;
+        font-family: var(--font-mono); font-size: 26px; letter-spacing: 0.08em;
+        color: var(--ink); text-decoration: none; border-bottom: 2px solid var(--ink);
+        padding-bottom: 8px; width: fit-content;
+    }
+    .intro-link .arrow { transition: transform 0.3s var(--ease-out-expo); }
+    .intro-link:hover .arrow { transform: translateX(10px); }
+
+    /* ===========================================
+       PROBLEM SLIDES (Easy / Intermediate / Expert)
+       =========================================== */
+    .problem-wrap {
+        position: absolute; left: 72px; right: 72px; top: 210px; bottom: 130px;
+        display: flex; flex-direction: column; gap: 24px;
+    }
+    .problem-head {
+        display: flex; align-items: baseline; justify-content: space-between; gap: 40px;
+    }
+    .problem-diff {
+        font-family: var(--font-mono); font-size: 22px; letter-spacing: 0.28em;
+        text-transform: uppercase; color: var(--grey); margin-bottom: 10px;
+    }
+    .problem-title {
+        font-size: 96px; font-weight: 900; line-height: 1; letter-spacing: -0.01em;
+    }
+    .problem-tag {
+        font-family: var(--font-mono); font-size: 18px; letter-spacing: 0.16em;
+        text-transform: uppercase; color: var(--grey);
+        border: 1.5px solid var(--ink); padding: 10px 20px; white-space: nowrap;
+    }
+    .problem-desc {
+        font-family: var(--font-display); font-size: 26px; line-height: 1.5;
+        color: var(--ink); max-width: 1600px;
+    }
+    .problem-examples {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px;
+        margin-top: 4px;
+    }
+    .problem-examples.single { grid-template-columns: 1fr; max-width: 900px; }
+    .example-card {
+        border: 1px solid var(--line); background: var(--paper-2);
+        padding: 22px 24px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .example-label {
+        font-family: var(--font-mono); font-size: 15px; letter-spacing: 0.16em;
+        text-transform: uppercase; color: var(--grey-light); margin-bottom: 4px;
+    }
+    .example-row {
+        font-family: var(--font-mono); font-size: 18px; line-height: 1.5; color: var(--ink);
+        word-break: break-word;
+    }
+    .example-row .k { color: var(--grey); }
+    .example-explain {
+        font-family: var(--font-display); font-size: 16px; line-height: 1.4;
+        color: var(--grey); margin-top: 4px;
+    }
+    .problem-constraints {
+        font-family: var(--font-mono); font-size: 18px; line-height: 1.6;
+        color: var(--grey); display: flex; gap: 32px; flex-wrap: wrap;
+    }
+    .problem-constraints .c-label {
+        color: var(--ink); letter-spacing: 0.16em; text-transform: uppercase;
+    }
+
+    /* ===========================================
+       CLOSING SLIDE
+       =========================================== */
+    .closing-wrap {
+        position: absolute; inset: 0; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; text-align: center;
+    }
+    .closing-text {
+        font-size: 148px; font-weight: 900; line-height: 1.02; letter-spacing: -0.015em;
+        max-width: 1600px;
+    }
+    .closing-rule { width: 160px; height: 2px; background: var(--ink); margin: 44px 0 36px; }
+    .closing-sub {
+        font-family: var(--font-display); font-weight: 400; font-size: 34px;
+        color: var(--ink); max-width: 1120px; line-height: 1.4; margin-bottom: 32px;
+    }
+    .closing-tag {
+        font-family: var(--font-mono); font-size: 22px; letter-spacing: 0.16em;
+        text-transform: uppercase; color: var(--grey);
+    }
+
+    /* ===========================================
+       DECK CONTROLS — outside the slide stage
+       =========================================== */
+    .deck-controls {
+        display: flex; align-items: center; gap: 22px;
+        font-family: var(--font-mono); font-size: 14px; letter-spacing: 0.1em;
+        color: rgba(255,255,255,0.55); text-transform: uppercase;
+    }
+    .nav-btn {
+        width: 40px; height: 40px; border-radius: 50%;
+        border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.06);
+        color: #fff; font-family: var(--font-mono); font-size: 18px; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        transition: background 0.2s ease, transform 0.2s ease;
+    }
+    .nav-btn:hover { background: rgba(255,255,255,0.16); transform: scale(1.05); }
+    .nav-dots { display: flex; gap: 10px; }
+    .nav-dot {
+        width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.3);
+        cursor: pointer; transition: background 0.2s ease, transform 0.2s ease;
+    }
+    .nav-dot.active { background: #fff; transform: scale(1.3); }
+
+    /* ===========================================
+       INLINE EDITING
+       =========================================== */
+    .edit-hotzone { position: fixed; top: 0; left: 0; width: 80px; height: 80px; z-index: 10000; cursor: pointer; }
+    .edit-toggle {
+        position: fixed; top: 18px; left: 18px; z-index: 10001;
+        width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.3);
+        background: rgba(0,0,0,0.7); color: #fff; font-size: 18px; cursor: pointer;
+        opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+    .edit-toggle.active { background: var(--ink); border-color: var(--ink); }
+    body.edit-mode .editable {
+        outline: 1px dashed rgba(13,13,12,0.4); outline-offset: 4px; cursor: text;
+    }
+    body.edit-mode .editable:hover { outline: 1px dashed var(--ink); }
+    .save-toast {
+        position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);
+        background: var(--ink); color: var(--paper); font-family: var(--font-mono);
+        font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase;
+        padding: 12px 22px; border-radius: 4px; z-index: 10002;
+        opacity: 0; pointer-events: none; transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    .save-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="edit-hotzone" id="editHotzone"></div>
+<button class="edit-toggle" id="editToggle" title="Edit mode (E)">&#9998;</button>
+<div class="save-toast" id="saveToast">Saved</div>
+
+<div class="deck-viewport">
+    <main class="deck-stage" id="deckStage">
+
+        <!-- ============ SLIDE 1: TITLE ============ -->
+        <section class="slide active visible">
+            <div class="grid-overlay"></div>
+            <div class="rule top soft"></div>
+            <div class="rule bottom soft"></div>
+            <span class="chrome-label tl editable">Computer&nbsp;Science&nbsp;Club</span>
+            <span class="chrome-label tr">01 / 09</span>
+            <span class="chrome-label bl editable">Meeting 02</span>
+            <span class="chrome-label br editable">2026</span>
+            <div class="stack-title">
+                <div class="eyebrow reveal editable">Meeting 02 &mdash; Setup &amp; First Code</div>
+                <h1 class="title-hero reveal editable">ST<br>HACKS</h1>
+                <div class="tagline-row reveal">
+                    <span class="editable">Install</span>
+                    <span class="editable">Sign Up</span>
+                    <span class="editable">Write Code</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ SLIDE 2: AGENDA ============ -->
+        <section class="slide">
+            <div class="grid-overlay"></div>
+            <span class="chrome-label tl editable">Today's Agenda</span>
+            <span class="chrome-label tr">02 / 09</span>
+            <div class="rule top soft"></div>
+            <div class="wwd-wrap">
+                <div class="wwd-item reveal">
+                    <div class="wwd-index">01</div>
+                    <div class="wwd-text editable">Install an IDE</div>
+                    <div class="wwd-sub editable">Any IDE works &mdash; VS Code, IntelliJ, PyCharm, whatever you're comfortable with.</div>
+                </div>
+                <div class="wwd-item reveal">
+                    <div class="wwd-index">02</div>
+                    <div class="wwd-text editable">Sign up for LeetCode &amp; GitHub</div>
+                    <div class="wwd-sub editable">Two accounts you'll use every week &mdash; practice and version control.</div>
+                </div>
+                <div class="wwd-item reveal">
+                    <div class="wwd-index">03</div>
+                    <div class="wwd-text editable">Hello World + Basics</div>
+                    <div class="wwd-sub editable">Print, do a few operations, concatenate some strings in your language of choice.</div>
+                </div>
+                <div class="wwd-item reveal">
+                    <div class="wwd-index">04</div>
+                    <div class="wwd-text editable">Practice Problems</div>
+                    <div class="wwd-sub editable">Three problems, easy to expert. Submit your solution to the Discord forum.</div>
+                </div>
+            </div>
+            <span class="chrome-label bl editable">ST Hacks</span>
+            <span class="chrome-label br editable">Meeting 02</span>
+        </section>
+
+        <!-- ============ SLIDE 3: SETUP TASKS ============ -->
+        <section class="slide">
+            <div class="grid-overlay"></div>
+            <span class="chrome-label tl editable">Setup Checklist</span>
+            <span class="chrome-label tr">03 / 09</span>
+            <div class="rule top soft"></div>
+            <div class="wwd-wrap">
+                <div class="wwd-item reveal">
+                    <div class="wwd-index">01 / IDE</div>
+                    <div class="wwd-text editable">Install any IDE</div>
+                    <div class="wwd-sub editable">An IDE is where you write and run your code. Any one that works for you is fine.</div>
+                </div>
+                <div class="wwd-item reveal">
+                    <div class="wwd-index">02 / LEETCODE</div>
+                    <div class="wwd-text editable">Make a LeetCode account</div>
+                    <div class="wwd-sub editable">This is where all our weekly practice problems will live.</div>
+                </div>
+                <div class="wwd-item reveal">
+                    <div class="wwd-index">03 / GITHUB</div>
+                    <div class="wwd-text editable">Make a GitHub account</div>
+                    <div class="wwd-sub editable">We'll use GitHub to share code, host projects, and collaborate.</div>
+                </div>
+                <div class="wwd-item reveal">
+                    <div class="wwd-index">04 / ORGANIZER</div>
+                    <div class="wwd-text editable">Create an organizer folder</div>
+                    <div class="wwd-sub editable">A single directory on your machine for club work &mdash; bring it to the next meeting.</div>
+                </div>
+            </div>
+            <span class="chrome-label bl editable">ST Hacks</span>
+            <span class="chrome-label br editable">Meeting 02</span>
+        </section>
+
+        <!-- ============ SLIDE 4: FIRST CODE (EXPLAINER) ============ -->
+        <section class="slide">
+            <div class="grid-overlay"></div>
+            <span class="chrome-label tl editable">First Code</span>
+            <span class="chrome-label tr">04 / 09</span>
+            <div class="rule top soft"></div>
+            <div class="explain-wrap">
+                <div class="explain-col reveal">
+                    <h2 class="explain-term editable">Hello World</h2>
+                    <p class="explain-body editable">Every programmer's first program. Print the words "Hello, World!" to the screen in your language of choice.</p>
+                    <pre class="code-block editable"><span class="comment"># python</span>
+print("Hello, World!")
+
+<span class="comment">// javascript</span>
+console.log("Hello, World!");</pre>
+                </div>
+                <div class="explain-col reveal">
+                    <h2 class="explain-term editable">Operations &amp; Concatenation</h2>
+                    <p class="explain-body editable">Try a few math operations and glue some strings together. Get a feel for how your language handles numbers vs. text.</p>
+                    <pre class="code-block editable"><span class="comment"># math</span>
+2 + 3         <span class="comment"># 5</span>
+10 % 3        <span class="comment"># 1</span>
+
+<span class="comment"># concatenation</span>
+"ST" + "Hacks"   <span class="comment"># "STHacks"</span></pre>
+                </div>
+            </div>
+            <span class="chrome-label bl editable">ST Hacks</span>
+            <span class="chrome-label br editable">Meeting 02</span>
+        </section>
+
+        <!-- ============ SLIDE 5: PRACTICE PROBLEMS INTRO ============ -->
+        <section class="slide">
+            <div class="grid-overlay"></div>
+            <span class="chrome-label tl editable">Practice Problems</span>
+            <span class="chrome-label tr">05 / 09</span>
+            <div class="rule top soft"></div>
+            <div class="intro-wrap">
+                <h2 class="intro-heading reveal editable">Practice Time.</h2>
+                <p class="intro-body reveal editable">Three problems &mdash; Easy, Intermediate, and Expert. Pick your language, take your time. When you're done, submit your code to the Discord forum so a board member can review it.</p>
+                <a class="intro-link reveal editable" href="https://docs.google.com/document/d/1tLPYhh6uemKj3nc9JJ3zBxzUeYCugSItlSh_U9g5agU/edit?usp=sharing" target="_blank" rel="noopener">Submission Guidelines <span class="arrow">&rarr;</span></a>
+            </div>
+            <span class="chrome-label bl editable">ST Hacks</span>
+            <span class="chrome-label br editable">Meeting 02</span>
+        </section>
+
+        <!-- ============ SLIDE 6: EASY PROBLEM ============ -->
+        <section class="slide">
+            <div class="grid-overlay"></div>
+            <span class="chrome-label tl editable">Problem 01 / Easy</span>
+            <span class="chrome-label tr">06 / 09</span>
+            <div class="rule top soft"></div>
+            <div class="problem-wrap">
+                <div class="reveal">
+                    <div class="problem-diff editable">Difficulty &mdash; Easy</div>
+                    <div class="problem-head">
+                        <h2 class="problem-title editable">Even or Odd</h2>
+                        <span class="problem-tag editable">Warm-up</span>
+                    </div>
+                </div>
+                <p class="problem-desc reveal editable">Write a program with a hardcoded integer. Print whether the number is <strong>even</strong> or <strong>odd</strong>. That's it &mdash; no user input required.</p>
+                <div class="problem-examples single reveal">
+                    <div class="example-card">
+                        <div class="example-label">Example</div>
+                        <div class="example-row"><span class="k">number =</span> 7</div>
+                        <div class="example-row"><span class="k">output &nbsp;=</span> "odd"</div>
+                        <div class="example-explain">7 is not divisible by 2, so it's odd.</div>
+                    </div>
+                </div>
+                <div class="problem-constraints reveal">
+                    <span><span class="c-label">Hint:</span> use the modulo operator (%)</span>
+                    <span><span class="c-label">Any language.</span></span>
+                </div>
+            </div>
+            <span class="chrome-label bl editable">ST Hacks</span>
+            <span class="chrome-label br editable">Meeting 02</span>
+        </section>
+
+        <!-- ============ SLIDE 7: INTERMEDIATE PROBLEM (TWO SUM) ============ -->
+        <section class="slide">
+            <div class="grid-overlay"></div>
+            <span class="chrome-label tl editable">Problem 02 / Intermediate</span>
+            <span class="chrome-label tr">07 / 09</span>
+            <div class="rule top soft"></div>
+            <div class="problem-wrap">
+                <div class="reveal">
+                    <div class="problem-diff editable">Difficulty &mdash; Intermediate</div>
+                    <div class="problem-head">
+                        <h2 class="problem-title editable">Two Sum</h2>
+                        <span class="problem-tag editable">Arrays &middot; Hash Map</span>
+                    </div>
+                </div>
+                <p class="problem-desc reveal editable">Given an array of integers <code>nums</code> and an integer <code>target</code>, return the indices of the two numbers that add up to <code>target</code>. Each input has exactly one solution, and you can't use the same element twice. Return the answer in any order.</p>
+                <div class="problem-examples reveal">
+                    <div class="example-card">
+                        <div class="example-label">Example 1</div>
+                        <div class="example-row"><span class="k">Input:</span>&nbsp; nums = [2,7,11,15], target = 9</div>
+                        <div class="example-row"><span class="k">Output:</span> [0,1]</div>
+                        <div class="example-explain">nums[0] + nums[1] == 9.</div>
+                    </div>
+                    <div class="example-card">
+                        <div class="example-label">Example 2</div>
+                        <div class="example-row"><span class="k">Input:</span>&nbsp; nums = [3,2,4], target = 6</div>
+                        <div class="example-row"><span class="k">Output:</span> [1,2]</div>
+                    </div>
+                    <div class="example-card">
+                        <div class="example-label">Example 3</div>
+                        <div class="example-row"><span class="k">Input:</span>&nbsp; nums = [3,3], target = 6</div>
+                        <div class="example-row"><span class="k">Output:</span> [0,1]</div>
+                    </div>
+                </div>
+                <div class="problem-constraints reveal">
+                    <span><span class="c-label">Constraints:</span></span>
+                    <span>2 &le; nums.length &le; 10<sup>4</sup></span>
+                    <span>-10<sup>9</sup> &le; nums[i] &le; 10<sup>9</sup></span>
+                    <span>-10<sup>9</sup> &le; target &le; 10<sup>9</sup></span>
+                    <span>Only one valid answer exists.</span>
+                </div>
+            </div>
+            <span class="chrome-label bl editable">ST Hacks</span>
+            <span class="chrome-label br editable">Meeting 02</span>
+        </section>
+
+        <!-- ============ SLIDE 8: EXPERT PROBLEM (ADD TWO NUMBERS) ============ -->
+        <section class="slide">
+            <div class="grid-overlay"></div>
+            <span class="chrome-label tl editable">Problem 03 / Expert</span>
+            <span class="chrome-label tr">08 / 09</span>
+            <div class="rule top soft"></div>
+            <div class="problem-wrap">
+                <div class="reveal">
+                    <div class="problem-diff editable">Difficulty &mdash; Expert</div>
+                    <div class="problem-head">
+                        <h2 class="problem-title editable">Add Two Numbers</h2>
+                        <span class="problem-tag editable">Linked List &middot; Math</span>
+                    </div>
+                </div>
+                <p class="problem-desc reveal editable">You're given two non-empty linked lists representing two non-negative integers. Digits are stored in <strong>reverse order</strong>, one per node. Add the two numbers and return the sum as a linked list. Assume neither number has leading zeros (except the number 0 itself).</p>
+                <div class="problem-examples reveal">
+                    <div class="example-card">
+                        <div class="example-label">Example 1</div>
+                        <div class="example-row"><span class="k">Input:</span>&nbsp; l1 = [2,4,3], l2 = [5,6,4]</div>
+                        <div class="example-row"><span class="k">Output:</span> [7,0,8]</div>
+                        <div class="example-explain">342 + 465 = 807.</div>
+                    </div>
+                    <div class="example-card">
+                        <div class="example-label">Example 2</div>
+                        <div class="example-row"><span class="k">Input:</span>&nbsp; l1 = [0], l2 = [0]</div>
+                        <div class="example-row"><span class="k">Output:</span> [0]</div>
+                    </div>
+                    <div class="example-card">
+                        <div class="example-label">Example 3</div>
+                        <div class="example-row"><span class="k">Input:</span>&nbsp; l1 = [9,9,9,9,9,9,9], l2 = [9,9,9,9]</div>
+                        <div class="example-row"><span class="k">Output:</span> [8,9,9,9,0,0,0,1]</div>
+                    </div>
+                </div>
+                <div class="problem-constraints reveal">
+                    <span><span class="c-label">Constraints:</span></span>
+                    <span>1 &le; nodes per list &le; 100</span>
+                    <span>0 &le; Node.val &le; 9</span>
+                    <span>No leading zeros.</span>
+                </div>
+            </div>
+            <span class="chrome-label bl editable">ST Hacks</span>
+            <span class="chrome-label br editable">Meeting 02</span>
+        </section>
+
+        <!-- ============ SLIDE 9: CLOSING ============ -->
+        <section class="slide">
+            <div class="grid-overlay"></div>
+            <div class="rule top soft"></div>
+            <div class="rule bottom soft"></div>
+            <span class="chrome-label tl editable">ST Hacks</span>
+            <span class="chrome-label tr">09 / 09</span>
+            <span class="chrome-label bl editable">Meeting 02</span>
+            <span class="chrome-label br editable">2026</span>
+            <div class="closing-wrap">
+                <h2 class="closing-text reveal editable">See you guys<br>next time.</h2>
+                <div class="closing-rule reveal"></div>
+                <div class="closing-sub reveal editable">Submit your practice problem solutions in the Discord forum before the next meeting. Bring your laptop and your organizer folder.</div>
+                <div class="closing-tag reveal editable">ST Hacks / Computer Science Club</div>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<div class="deck-controls">
+    <button class="nav-btn" id="prevBtn" title="Previous (&larr;)">&larr;</button>
+    <div class="nav-dots" id="navDots"></div>
+    <button class="nav-btn" id="nextBtn" title="Next (&rarr;)">&rarr;</button>
+</div>
+
+<script>
+    /* ===========================================
+       SLIDE PRESENTATION CONTROLLER
+       Same behavior as meeting 1: keyboard, touch, wheel, dots.
+       =========================================== */
+    class SlidePresentation {
+        constructor() {
+            this.slides = document.querySelectorAll('.slide');
+            this.currentSlide = 0;
+            this.stage = document.getElementById('deckStage');
+            this.dotsContainer = document.getElementById('navDots');
+            this.buildDots();
+            this.setupStageScale();
+            this.setupKeyboardNav();
+            this.setupTouchNav();
+            this.setupWheelNav();
+            this.setupButtons();
+            this.showSlide(0);
+        }
+
+        buildDots() {
+            this.slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+                dot.addEventListener('click', () => this.showSlide(i));
+                this.dotsContainer.appendChild(dot);
+            });
+        }
+
+        setupStageScale() {
+            const scale = () => {
+                const factor = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+                const x = (window.innerWidth - 1920 * factor) / 2;
+                const y = (window.innerHeight - 1080 * factor) / 2;
+                this.stage.style.transform = `translate(${x}px, ${y}px) scale(${factor})`;
+            };
+            scale();
+            window.addEventListener('resize', scale);
+        }
+
+        setupKeyboardNav() {
+            document.addEventListener('keydown', (e) => {
+                if (document.body.classList.contains('edit-mode') && e.target.getAttribute('contenteditable') === 'true') return;
+                if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); this.next(); }
+                if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); this.prev(); }
+            });
+        }
+
+        setupTouchNav() {
+            let startX = 0;
+            this.stage.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; }, { passive: true });
+            this.stage.addEventListener('touchend', (e) => {
+                const dx = e.changedTouches[0].clientX - startX;
+                if (Math.abs(dx) > 60) { dx < 0 ? this.next() : this.prev(); }
+            }, { passive: true });
+        }
+
+        setupWheelNav() {
+            let locked = false;
+            window.addEventListener('wheel', (e) => {
+                if (locked) return;
+                if (Math.abs(e.deltaY) < 30) return;
+                locked = true;
+                e.deltaY > 0 ? this.next() : this.prev();
+                setTimeout(() => { locked = false; }, 700);
+            }, { passive: true });
+        }
+
+        setupButtons() {
+            document.getElementById('prevBtn').addEventListener('click', () => this.prev());
+            document.getElementById('nextBtn').addEventListener('click', () => this.next());
+        }
+
+        next() { this.showSlide(this.currentSlide + 1); }
+        prev() { this.showSlide(this.currentSlide - 1); }
+
+        showSlide(index) {
+            this.currentSlide = Math.max(0, Math.min(index, this.slides.length - 1));
+            this.slides.forEach((slide, i) => {
+                slide.classList.toggle('active', i === this.currentSlide);
+                slide.classList.toggle('visible', i === this.currentSlide);
+            });
+            document.querySelectorAll('.nav-dot').forEach((dot, i) => {
+                dot.classList.toggle('active', i === this.currentSlide);
+            });
+        }
+    }
+
+    /* ===========================================
+       INLINE EDITING — click ✏️ (top-left) or press E
+       Content persists to localStorage per deck.
+       =========================================== */
+    class InlineEditor {
+        constructor() {
+            this.isActive = false;
+            this.toggleBtn = document.getElementById('editToggle');
+            this.hotzone = document.getElementById('editHotzone');
+            this.toast = document.getElementById('saveToast');
+            this.storageKey = 'st-hacks-deck-meeting-2-content';
+            this.setupHoverReveal();
+            this.setupHandlers();
+            this.restoreFromStorage();
+        }
+
+        setupHoverReveal() {
+            let hideTimeout = null;
+            const show = () => { clearTimeout(hideTimeout); this.toggleBtn.classList.add('show'); };
+            const hide = () => { hideTimeout = setTimeout(() => { if (!this.isActive) this.toggleBtn.classList.remove('show'); }, 400); };
+            this.hotzone.addEventListener('mouseenter', show);
+            this.hotzone.addEventListener('mouseleave', hide);
+            this.toggleBtn.addEventListener('mouseenter', show);
+            this.toggleBtn.addEventListener('mouseleave', hide);
+        }
+
+        setupHandlers() {
+            this.toggleBtn.addEventListener('click', () => this.toggleEditMode());
+            this.hotzone.addEventListener('click', () => this.toggleEditMode());
+            document.addEventListener('keydown', (e) => {
+                if ((e.key === 'e' || e.key === 'E') && e.target.getAttribute('contenteditable') !== 'true') {
+                    this.toggleEditMode();
+                }
+                if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                    e.preventDefault();
+                    this.save();
+                }
+            });
+        }
+
+        toggleEditMode() {
+            this.isActive = !this.isActive;
+            document.body.classList.toggle('edit-mode', this.isActive);
+            this.toggleBtn.classList.toggle('active', this.isActive);
+            this.toggleBtn.classList.toggle('show', this.isActive);
+            document.querySelectorAll('.editable').forEach(el => {
+                el.setAttribute('contenteditable', this.isActive ? 'true' : 'false');
+            });
+            if (!this.isActive) this.save();
+        }
+
+        restoreFromStorage() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(this.storageKey) || '[]');
+                const editables = document.querySelectorAll('.editable');
+                saved.forEach((html, i) => { if (editables[i]) editables[i].innerHTML = html; });
+            } catch (err) { /* ignore malformed storage */ }
+        }
+
+        save() {
+            const editables = document.querySelectorAll('.editable');
+            const content = Array.from(editables).map(el => el.innerHTML);
+            localStorage.setItem(this.storageKey, JSON.stringify(content));
+            this.showToast('Saved');
+        }
+
+        showToast(msg) {
+            this.toast.textContent = msg;
+            this.toast.classList.add('show');
+            setTimeout(() => this.toast.classList.remove('show'), 1400);
+        }
+    }
+
+    new SlidePresentation();
+    new InlineEditor();
+</script>
+</body>
+</html>
