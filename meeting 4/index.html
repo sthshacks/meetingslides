@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ST Hacks / Meeting 04</title>
+
+<!-- Fonts: Archivo (display + body) + IBM Plex Mono (structural chrome) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+    /* ===========================================
+       THEME: Grid Mono (monochrome Swiss-grid system)
+       Matches meeting 1, 2 & 3 exactly.
+       =========================================== */
+    :root {
+        --paper: #f2f2ee;
+        --paper-2: #e9e9e3;
+        --ink: #0d0d0c;
+        --grey: #6b6b64;
+        --grey-light: #a7a79f;
+        --line: rgba(13, 13, 12, 0.18);
+        --line-soft: rgba(13, 13, 12, 0.10);
+
+        --font-display: 'Archivo', sans-serif;
+        --font-mono: 'IBM Plex Mono', monospace;
+
+        --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+        --duration-normal: 0.7s;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* ===========================================
+       MANDATORY FIXED 16:9 STAGE (viewport-base.css)
+       =========================================== */
+    html, body {
+        width: 100%; height: 100%; margin: 0; overflow: hidden;
+        background: var(--stage-bg, #000);
+    }
+    .deck-viewport {
+        position: fixed; inset: 0; overflow: hidden;
+        background: var(--stage-bg, #000);
+    }
+    .deck-stage {
+        position: absolute; left: 0; top: 0;
+        width: 1920px; height: 1080px; overflow: hidden;
+        transform-origin: 0 0;
+        background: var(--slide-bg, #fff);
+    }
+    .slide {
+        position: absolute; inset: 0;
+        width: 1920px; height: 1080px; overflow: hidden;
+        display: block; visibility: hidden; opacity: 0; pointer-events: none;
+        background: var(--slide-bg, #fff);
+    }
+    .slide.active, .slide.visible {
+        visibility: visible; opacity: 1; pointer-events: auto; z-index: 1;
+    }
+    img, video, canvas, svg { max-width: 100%; max-height: 100%; }
+    .deck-controls {
+        position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+        z-index: 1000;
+    }
+    @media print {
+        html, body { width: 1920px; height: auto; overflow: visible; background: #fff; }
+        .deck-viewport { position: static; overflow: visible; background: #fff; }
+        .deck-stage { position: static; width: auto; height: auto; transform: none !important; background: none; }
+        .slide {
+            position: relative; display: block !important; visibility: visible !important;
+            opacity: 1 !important; pointer-events: auto !important;
+            width: 1920px; height: 1080px; break-after: page; page-break-after: always;
+        }
+        .slide:last-child { break-after: auto; page-break-after: auto; }
+        .deck-controls { display: none !important; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; }
+    }
+
+    /* ===========================================
+       SLIDE BASE: Grid Mono system
+       =========================================== */
+    .slide { background: var(--paper); color: var(--ink); font-family: var(--font-display); }
+
+    .grid-overlay {
+        position: absolute; inset: 0; pointer-events: none;
+        background-image:
+            linear-gradient(var(--line-soft) 1px, transparent 1px),
+            linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+        background-size: 120px 120px;
+    }
+
+    .chrome-label {
+        position: absolute; font-family: var(--font-mono); font-size: 20px;
+        letter-spacing: 0.18em; text-transform: uppercase; color: var(--grey);
+    }
+    .chrome-label.tl { top: 72px; left: 72px; }
+    .chrome-label.tr { top: 72px; right: 72px; text-align: right; }
+    .chrome-label.bl { bottom: 72px; left: 72px; }
+    .chrome-label.br { bottom: 72px; right: 72px; }
+
+    .rule { position: absolute; left: 72px; right: 72px; height: 1px; background: var(--ink); }
+    .rule.top { top: 150px; }
+    .rule.bottom { bottom: 150px; }
+    .rule.soft { background: var(--line); }
+
+    /* ===========================================
+       ANIMATIONS: everything appears together on .visible
+       (no stagger, no transform — avoids elements popping
+       in out of reading order while presenting)
+       =========================================== */
+    .reveal {
+        opacity: 0;
+        transition: opacity var(--duration-normal) var(--ease-out-expo);
+    }
+    .slide.visible .reveal { opacity: 1; }
+
+    /* ===========================================
+       SLIDE 1: TITLE
+       =========================================== */
+    .stack-title {
+        position: absolute; left: 72px; right: 72px; top: 0; bottom: 0;
+        display: flex; flex-direction: column; justify-content: center;
+    }
+    .eyebrow {
+        font-family: var(--font-mono); font-size: 24px; letter-spacing: 0.3em;
+        text-transform: uppercase; color: var(--grey); margin-bottom: 28px;
+    }
+    .title-hero {
+        font-size: 128px; line-height: 0.92; letter-spacing: -0.02em; font-weight: 900;
+    }
+    .tagline-row {
+        margin-top: 36px; font-family: var(--font-mono); font-size: 28px;
+        letter-spacing: 0.06em; color: var(--ink); display: flex; gap: 40px; flex-wrap: wrap;
+    }
+    .tagline-row span::before { content: "/ "; color: var(--grey); }
+
+    /* ===========================================
+       BIG STATEMENT SLIDE (one idea, huge type)
+       =========================================== */
+    .big-wrap {
+        position: absolute; left: 72px; right: 72px; top: 0; bottom: 0;
+        display: flex; flex-direction: column; justify-content: center;
+    }
+    .big-heading {
+        font-size: 84px; font-weight: 900; line-height: 1.05; letter-spacing: -0.015em;
+        max-width: 1650px;
+    }
+    .big-sub {
+        margin-top: 40px; font-family: var(--font-mono); font-size: 30px;
+        color: var(--grey); max-width: 1300px; line-height: 1.4;
+    }
+
+    /* ===========================================
+       4-UP GRID (agenda, ideas, why-attend)
+       =========================================== */
+    .grid4-wrap {
+        position: absolute; left: 72px; right: 72px; top: 300px; bottom: 170px;
+        display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+    }
+    .grid4-item {
+        position: relative; padding: 0 64px 0 0; border-right: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        display: flex; flex-direction: column; justify-content: center;
+    }
+    .grid4-item:nth-child(2) { border-right: none; padding-left: 64px; padding-right: 0; }
+    .grid4-item:nth-child(4) { border-right: none; padding-left: 64px; padding-right: 0; }
+    .grid4-item:nth-child(3), .grid4-item:nth-child(4) { border-bottom: none; }
+    .grid4-index {
+        font-family: var(--font-mono); font-size: 22px; letter-spacing: 0.1em;
+        color: var(--grey-light); margin-bottom: 18px;
+    }
+    .grid4-text { font-size: 50px; font-weight: 900; line-height: 1.1; }
+
+    /* ===========================================
+       BULLET LIST (point + short explanation line)
+       =========================================== */
+    .list-wrap {
+        position: absolute; left: 72px; right: 72px; top: 270px; bottom: 170px;
+        display: flex; flex-direction: column; justify-content: center; gap: 0;
+    }
+    .list-item {
+        display: flex; align-items: baseline; gap: 32px;
+        padding: 20px 0; border-bottom: 1px solid var(--line);
+    }
+    .list-item:last-child { border-bottom: none; }
+    .list-mark { font-family: var(--font-mono); font-size: 26px; color: var(--grey-light); width: 40px; flex-shrink: 0; }
+    .list-title { font-size: 32px; font-weight: 800; white-space: nowrap; }
+    .list-sep { color: var(--grey-light); font-size: 28px; }
+    .list-body { font-family: var(--font-display); font-size: 24px; color: var(--grey); line-height: 1.4; }
+
+    /* ===========================================
+       CHECKLIST (prep items)
+       =========================================== */
+    .check-grid {
+        position: absolute; left: 72px; right: 72px; top: 300px; bottom: 170px;
+        display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(3, 1fr);
+        gap: 0;
+    }
+    .check-item {
+        display: flex; align-items: center; gap: 30px;
+        border-bottom: 1px solid var(--line); border-right: 1px solid var(--line);
+        padding: 0 50px;
+    }
+    .check-item:nth-child(2n) { border-right: none; }
+    .check-item:nth-child(5), .check-item:nth-child(6) { border-bottom: none; }
+    .check-box {
+        width: 48px; height: 48px; border: 2.5px solid var(--ink); flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 30px; font-weight: 900; color: var(--ink);
+    }
+    .check-text { font-size: 32px; font-weight: 700; line-height: 1.2; }
+
+    /* ===========================================
+       SCHEDULE TIMELINE (4 blocks)
+       =========================================== */
+    .sched-top {
+        position: absolute; left: 72px; right: 72px; top: 240px;
+        display: flex; gap: 60px; font-family: var(--font-mono); font-size: 24px; color: var(--grey);
+        border-bottom: 1px solid var(--line); padding-bottom: 30px;
+    }
+    .sched-top b { color: var(--ink); font-weight: 600; }
+    .sched-wrap {
+        position: absolute; left: 72px; right: 72px; top: 360px; bottom: 170px;
+        display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
+    }
+    .sched-block {
+        border-right: 1px solid var(--line); padding: 40px 36px 0 0;
+        display: flex; flex-direction: column; gap: 14px;
+    }
+    .sched-block:first-child { padding-left: 0; }
+    .sched-block:not(:first-child) { padding-left: 36px; }
+    .sched-block:last-child { border-right: none; }
+    .sched-time {
+        font-family: var(--font-mono); font-size: 26px; font-weight: 600; color: var(--grey);
+    }
+    .sched-label { font-size: 34px; font-weight: 900; line-height: 1.2; }
+
+    /* ===========================================
+       LINKS LIST (closing slide)
+       =========================================== */
+    .signup-wrap {
+        position: absolute; left: 72px; right: 72px; top: 0; bottom: 0;
+        display: grid; grid-template-columns: 1fr 720px; gap: 100px; align-items: center;
+    }
+    .signup-heading { font-size: 68px; font-weight: 900; line-height: 1; margin-bottom: 36px; }
+    .signup-body {
+        font-family: var(--font-mono); font-size: 24px;
+        color: var(--grey); line-height: 1.5; max-width: 700px;
+    }
+    .link-list { display: flex; flex-direction: column; gap: 28px; }
+    .link-card {
+        border: 1.5px solid var(--ink); padding: 26px 32px;
+        display: flex; flex-direction: column; gap: 8px;
+    }
+    .link-card .link-name {
+        font-family: var(--font-mono); font-size: 17px; letter-spacing: 0.14em;
+        text-transform: uppercase; color: var(--grey);
+    }
+    .link-card .link-url {
+        font-family: var(--font-mono); font-size: 21px; color: var(--ink); word-break: break-all;
+    }
+
+    /* ===========================================
+       CLOSING TAG
+       =========================================== */
+    .closing-tag {
+        margin-top: 44px; font-family: var(--font-mono); font-size: 20px; letter-spacing: 0.16em;
+        text-transform: uppercase; color: var(--grey);
+    }
+
+    /* ===========================================
+       DECK CONTROLS: outside the slide stage
+       =========================================== */
+    .deck-controls {
+        display: flex; align-items: center; gap: 22px;
+        font-family: var(--font-mono); font-size: 14px; letter-spacing: 0.1em;
+        color: rgba(255,255,255,0.55); text-transform: uppercase;
+    }
+    .nav-btn {
+        width: 40px; height: 40px; border-radius: 50%;
+        border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.06);
+        color: #fff; font-family: var(--font-mono); font-size: 18px; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        transition: background 0.2s ease, transform 0.2s ease;
+    }
+    .nav-btn:hover { background: rgba(255,255,255,0.16); transform: scale(1.05); }
+    .nav-dots { display: flex; gap: 10px; }
+    .nav-dot {
+        width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.3);
+        cursor: pointer; transition: background 0.2s ease, transform 0.2s ease;
+    }
+    .nav-dot.active { background: #fff; transform: scale(1.3); }
+
+    /* ===========================================
+       INLINE EDITING
+       =========================================== */
+    .edit-hotzone { position: fixed; top: 0; left: 0; width: 80px; height: 80px; z-index: 10000; cursor: pointer; }
+    .edit-toggle {
+        position: fixed; top: 18px; left: 18px; z-index: 10001;
+        width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.3);
+        background: rgba(0,0,0,0.7); color: #fff; font-size: 18px; cursor: pointer;
+        opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+    .edit-toggle.active { background: var(--ink); border-color: var(--ink); }
+    body.edit-mode .editable {
+        outline: 1px dashed rgba(13,13,12,0.4); outline-offset: 4px; cursor: text;
+    }
+    body.edit-mode .editable:hover { outline: 1px dashed var(--ink); }
+    .save-toast {
+        position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);
+        background: var(--ink); color: var(--paper); font-family: var(--font-mono);
+        font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase;
+        padding: 12px 22px; border-radius: 4px; z-index: 10002;
+        opacity: 0; pointer-events: none; transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    .save-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="edit-hotzone" id="editHotzone"></div>
+<button class="edit-toggle" id="editToggle" title="Edit mode (E)">&#9998;</button>
+<div class="save-toast" id="saveToast">Saved</div>
+
+<div class="deck-viewport">
+    <main class="deck-stage" id="deckStage">
+
+        <!-- ============ SLIDE 1: TITLE ============ -->
+        <section class="slide active visible">
+            <div class="grid-overlay"></div>
+            <div class="rule top soft"></div>
+            <div class="rule bottom soft"></div>
+            <span class="chrome-label tl editable">Computer&nbsp;Science&nbsp;Club</span>
+            <span class="chrome-label tr">01 / 09</span>
+            <span class="chrome-label bl editable">Meeting 04</span>
+            <span class="chrome-label br editable">2026</span>
+            <div class="stack-title">
+                <div class="eyebrow reveal editable">Meeting 04</div>
+                <h1 class="title-hero reveal editable">ST<br>HACKS</h1>
+                <div class="tagline-row reveal">
+                    <span class="editable">Hackathons</span>
+                    <span class="editable">SpartHill Hacks 2026</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ SLIDE 2: WHAT IS A HACKATHON (SIMPLE) ============ -->
+        <section class="slide">
+            <div class="grid-overlay"></div>
+            <span class="chrome-label tl editable">What's a Hackathon?</span>
+            <span class="chrome-label tr">02 / 09</span>
+            <div class="rule top soft"></div>
+            <div class="big-wrap">
+                <h2 class="big-heading reveal editable">What is a hackathon?</h2>
+                <p class="big-sub reveal editable">Teams build a project around a theme, then demo it for judges. No advanced coding needed.</p>
+            </div>
+            <span class="chrome-label bl editable">ST Hacks</span>
+            <span class="chrome-label br editable">Meeting 04</span>
+        </section>
+
+        <!-- ============ SLIDE 3: INTRODUCE SPARTHILL HACKS 2026 ============ -->
+        <section class="slide">
+            <div class="grid-overlay"></div>
+            <span class="chrome-label tl editable">The Hackathon</span>
+            <span class="chrome-label tr">03 / 09</span>
+            <div class="rule top soft"></div>
+            <div class="big-wrap">
+                <h2 class="big-heading reveal editable">SpartHill<br>Hacks 2026.</h2>
+                <p class="big-sub reveal editable">SJSU &times; Foothill College &middot; AI for sustainability, ethics &amp; social impact.</p>
+                <div class="closing-tag reveal editable" style="margin-top:50px;font-size:24px;">High School Track &middot; 60 spots for ESUHSD &middot; beginner friendly</div>
+            </div>
+            <span class="chrome-label bl editable">ST Hacks</span>
+            <span class="chrome-label br editable">Meeting 04</span>
+        </section>
+
+        <!-- ============ SLIDE 4: SCHEDULE ============ -->
+        <section class="slide">
+            <div class="grid-overlay"></div>
+            <span class="chrome-label tl editable">SpartHill Hacks 2026</span>
+            <span class="chrome-label tr">04 / 09</span>
+            <div class="rule top soft"></div>
+            <div class="sched-top reveal">
+                <span><b class="editable">Sat, Oct 24, 2026</b></span>
+                <span><b class="editable">8:30 AM &ndash; 2:00 PM</b></span>
+                <span><b class="editable">SJSU, Spartan Complex</b></span>
+                <span><b class="editable">Free</b> &mdash; food included</span>
+            </div>
+            <div class="sched-wrap">
+                <div class="sched-block reveal">
+                    <div class="sched-time editable">8:30</div>
+                    <div class="sched-label editable">Check-in</div>
+                </div>
+                <div class="sched-block reveal">
+                    <div class="sched-time editable">9:00</div>
+                    <div class="sched-label editable">Build</div>
+                </div>
+                <div class="sched-block reveal">
+                    <div class="sched-time editable">11:30</div>
+                    <div class="sched-label editable">Lunch + Expo</div>
+                </div>
+                <div class="sched-block reveal">
+                    <div class="sched-time editable">1:00</div>
+                    <div class="sched-label editable">Present</div>
+                </div>
+            </div>
+            <span class="chrome-label bl editable">ST Hacks</span>
+            <span class="chrome-label br editable">Meeting 04</span>
+        </section>
+
+        <!-- ============ SLIDE 5: BEFORE YOU ARRIVE ============ -->
+        <section class="slide">
+            <div class="grid-overlay"></div>
+            <span class="chrome-label tl editable">How to Prepare</span>
+            <span class="chrome-label tr">05 / 09</span>
+            <div class="rule top soft"></div>
+            <div class="check-grid">
+                <div class="check-item reveal">
+                    <div class="check-box">&#10003;</div>
+                    <div class="check-text editable">GitHub account</div>
+                </div>
+                <div class="check-item reveal">
+                    <div class="check-box">&#10003;</div>
+                    <div class="check-text editable">Git installed</div>
+                </div>
+                <div class="check-item reveal">
+                    <div class="check-box">&#10003;</div>
+                    <div class="check-text editable">VS Code or an IDE</div>
+                </div>
+                <div class="check-item reveal">
+                    <div class="check-box">&#10003;</div>
+                    <div class="check-text editable">Laptop + charger</div>
+                </div>
+                <div class="check-item reveal">
+                    <div class="check-box">&#10003;</div>
+                    <div class="check-text editable">Dev environment ready</div>
+                </div>
+                <div class="check-item reveal">
+                    <div class="check-box">&#10003;</div>
+                    <div class="check-text editable">API keys for your tools</div>
+                </div>
+            </div>
+            <span class="chrome-label bl editable">ST Hacks</span>
+            <span class="chrome-label br editable">Meeting 04</span>
+        </section>
+
+        <!-- ============ SLIDE 6: TEAM & STRONG PROJECTS ============ -->
+        <section class="slide">
+            <div class="grid-overlay"></div>
+            <span class="chrome-label tl editable">How to Prepare</span>
+            <span class="chrome-label tr">06 / 09</span>
+            <div class="rule top soft"></div>
+            <div class="big-wrap">
+                <h2 class="big-heading reveal editable">Problem &rarr; Solution<br>&rarr; Demo &rarr; Impact.</h2>
+                <p class="big-sub reveal editable">Start with an MVP &mdash; the smallest version that proves the idea works. One strong feature beats five unfinished ones.</p>
+                <div class="closing-tag reveal editable" style="margin-top:50px;font-size:24px;">Roles: Frontend &middot; Backend &middot; AI/ML &middot; UI/UX &middot; Presenter</div>
+            </div>
+            <span class="chrome-label bl editable">ST Hacks</span>
+            <span class="chrome-label br editable">Meeting 04</span>
+        </section>
+
+        <!-- ============ SLIDE 7: PROJECT IDEAS ============ -->
+        <section class="slide">
+            <div class="grid-overlay"></div>
+            <span class="chrome-label tl editable">Project Ideas</span>
+            <span class="chrome-label tr">07 / 09</span>
+            <div class="rule top soft"></div>
+            <div class="grid4-wrap">
+                <div class="grid4-item reveal">
+                    <div class="grid4-index editable">Education</div>
+                    <div class="grid4-text editable">Personalized learning system</div>
+                </div>
+                <div class="grid4-item reveal">
+                    <div class="grid4-index editable">Environment</div>
+                    <div class="grid4-text editable">Energy usage optimizer</div>
+                </div>
+                <div class="grid4-item reveal">
+                    <div class="grid4-index editable">Civic / Community</div>
+                    <div class="grid4-text editable">Resource matching platform</div>
+                </div>
+                <div class="grid4-item reveal">
+                    <div class="grid4-index editable">AI / Automation</div>
+                    <div class="grid4-text editable">Document automation tool</div>
+                </div>
+            </div>
+            <span class="chrome-label bl editable">Avoid: chatbots &middot; to-do apps &middot; feature creep</span>
+            <span class="chrome-label br editable">Meeting 04</span>
+        </section>
+
+        <!-- ============ SLIDE 8: HOW TO WIN ============ -->
+        <section class="slide">
+            <div class="grid-overlay"></div>
+            <span class="chrome-label tl editable">How to Win</span>
+            <span class="chrome-label tr">08 / 09</span>
+            <div class="rule top soft"></div>
+            <div class="list-wrap">
+                <div class="list-item reveal">
+                    <span class="list-mark">01</span>
+                    <span class="list-title editable">Pick a real problem</span>
+                    <span class="list-sep">&mdash;</span>
+                    <span class="list-body editable">judges remember projects that actually help someone.</span>
+                </div>
+                <div class="list-item reveal">
+                    <span class="list-mark">02</span>
+                    <span class="list-title editable">Do one thing well</span>
+                    <span class="list-sep">&mdash;</span>
+                    <span class="list-body editable">a simple idea done cleanly beats ten half-finished features.</span>
+                </div>
+                <div class="list-item reveal">
+                    <span class="list-mark">03</span>
+                    <span class="list-title editable">Make sure it works</span>
+                    <span class="list-sep">&mdash;</span>
+                    <span class="list-body editable">a bug during the demo hurts more than a missing feature.</span>
+                </div>
+                <div class="list-item reveal">
+                    <span class="list-mark">04</span>
+                    <span class="list-title editable">Keep it clean</span>
+                    <span class="list-sep">&mdash;</span>
+                    <span class="list-body editable">a tidy-looking project just feels more trustworthy.</span>
+                </div>
+                <div class="list-item reveal">
+                    <span class="list-mark">05</span>
+                    <span class="list-title editable">Explain why it matters</span>
+                    <span class="list-sep">&mdash;</span>
+                    <span class="list-body editable">say who it helps and how, in plain terms.</span>
+                </div>
+                <div class="list-item reveal">
+                    <span class="list-mark">06</span>
+                    <span class="list-title editable">Practice your pitch</span>
+                    <span class="list-sep">&mdash;</span>
+                    <span class="list-body editable">teams that rehearse always present better than teams that wing it.</span>
+                </div>
+            </div>
+            <span class="chrome-label bl editable">ST Hacks</span>
+            <span class="chrome-label br editable">Meeting 04</span>
+        </section>
+
+        <!-- ============ SLIDE 9: WHY ATTEND + LINKS ============ -->
+        <section class="slide">
+            <div class="grid-overlay"></div>
+            <span class="chrome-label tl editable">Why Attend</span>
+            <span class="chrome-label tr">09 / 09</span>
+            <div class="rule top soft"></div>
+            <div class="signup-wrap">
+                <div class="reveal">
+                    <h2 class="signup-heading editable">Free.<br>Sign up.</h2>
+                    <p class="signup-body editable">Real AI project &middot; mentors &middot; career expo &middot; resume &amp; portfolio piece.</p>
+                    <div class="closing-tag editable">ST Hacks / Computer Science Club</div>
+                </div>
+                <div class="link-list reveal">
+                    <div class="link-card">
+                        <span class="link-name editable">Website</span>
+                        <span class="link-url editable">https://sparthillhack2026.vercel.app/</span>
+                    </div>
+                    <div class="link-card">
+                        <span class="link-name editable">Registration</span>
+                        <span class="link-url editable">https://forms.gle/4MdL77o1euXKLZT58</span>
+                    </div>
+                    <div class="link-card">
+                        <span class="link-name editable">Timeline</span>
+                        <span class="link-url editable">https://sparthillhack2026.vercel.app/timeline</span>
+                    </div>
+                </div>
+            </div>
+            <span class="chrome-label bl editable">ST Hacks</span>
+            <span class="chrome-label br editable">Meeting 04</span>
+        </section>
+
+    </main>
+</div>
+
+<div class="deck-controls">
+    <button class="nav-btn" id="prevBtn" title="Previous (&larr;)">&larr;</button>
+    <div class="nav-dots" id="navDots"></div>
+    <button class="nav-btn" id="nextBtn" title="Next (&rarr;)">&rarr;</button>
+</div>
+
+<script>
+    /* ===========================================
+       SLIDE PRESENTATION CONTROLLER
+       Same behavior as meeting 1, 2 & 3: keyboard, touch, wheel, dots.
+       =========================================== */
+    class SlidePresentation {
+        constructor() {
+            this.slides = document.querySelectorAll('.slide');
+            this.currentSlide = 0;
+            this.stage = document.getElementById('deckStage');
+            this.dotsContainer = document.getElementById('navDots');
+            this.buildDots();
+            this.setupStageScale();
+            this.setupKeyboardNav();
+            this.setupTouchNav();
+            this.setupWheelNav();
+            this.setupButtons();
+            this.showSlide(0);
+        }
+
+        buildDots() {
+            this.slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+                dot.addEventListener('click', () => this.showSlide(i));
+                this.dotsContainer.appendChild(dot);
+            });
+        }
+
+        setupStageScale() {
+            const scale = () => {
+                const factor = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+                const x = (window.innerWidth - 1920 * factor) / 2;
+                const y = (window.innerHeight - 1080 * factor) / 2;
+                this.stage.style.transform = `translate(${x}px, ${y}px) scale(${factor})`;
+            };
+            scale();
+            window.addEventListener('resize', scale);
+        }
+
+        setupKeyboardNav() {
+            document.addEventListener('keydown', (e) => {
+                if (document.body.classList.contains('edit-mode') && e.target.getAttribute('contenteditable') === 'true') return;
+                if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); this.next(); }
+                if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); this.prev(); }
+            });
+        }
+
+        setupTouchNav() {
+            let startX = 0;
+            this.stage.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; }, { passive: true });
+            this.stage.addEventListener('touchend', (e) => {
+                const dx = e.changedTouches[0].clientX - startX;
+                if (Math.abs(dx) > 60) { dx < 0 ? this.next() : this.prev(); }
+            }, { passive: true });
+        }
+
+        setupWheelNav() {
+            let locked = false;
+            window.addEventListener('wheel', (e) => {
+                if (locked) return;
+                if (Math.abs(e.deltaY) < 30) return;
+                locked = true;
+                e.deltaY > 0 ? this.next() : this.prev();
+                setTimeout(() => { locked = false; }, 700);
+            }, { passive: true });
+        }
+
+        setupButtons() {
+            document.getElementById('prevBtn').addEventListener('click', () => this.prev());
+            document.getElementById('nextBtn').addEventListener('click', () => this.next());
+        }
+
+        next() { this.showSlide(this.currentSlide + 1); }
+        prev() { this.showSlide(this.currentSlide - 1); }
+
+        showSlide(index) {
+            this.currentSlide = Math.max(0, Math.min(index, this.slides.length - 1));
+            this.slides.forEach((slide, i) => {
+                slide.classList.toggle('active', i === this.currentSlide);
+                slide.classList.toggle('visible', i === this.currentSlide);
+            });
+            document.querySelectorAll('.nav-dot').forEach((dot, i) => {
+                dot.classList.toggle('active', i === this.currentSlide);
+            });
+        }
+    }
+
+    /* ===========================================
+       INLINE EDITING: click the pencil (top-left) or press E
+       Content persists to localStorage per deck.
+       =========================================== */
+    class InlineEditor {
+        constructor() {
+            this.isActive = false;
+            this.toggleBtn = document.getElementById('editToggle');
+            this.hotzone = document.getElementById('editHotzone');
+            this.toast = document.getElementById('saveToast');
+            this.storageKey = 'st-hacks-deck-meeting-4-content';
+            this.setupHoverReveal();
+            this.setupHandlers();
+            this.restoreFromStorage();
+        }
+
+        setupHoverReveal() {
+            let hideTimeout = null;
+            const show = () => { clearTimeout(hideTimeout); this.toggleBtn.classList.add('show'); };
+            const hide = () => { hideTimeout = setTimeout(() => { if (!this.isActive) this.toggleBtn.classList.remove('show'); }, 400); };
+            this.hotzone.addEventListener('mouseenter', show);
+            this.hotzone.addEventListener('mouseleave', hide);
+            this.toggleBtn.addEventListener('mouseenter', show);
+            this.toggleBtn.addEventListener('mouseleave', hide);
+        }
+
+        setupHandlers() {
+            this.toggleBtn.addEventListener('click', () => this.toggleEditMode());
+            this.hotzone.addEventListener('click', () => this.toggleEditMode());
+            document.addEventListener('keydown', (e) => {
+                if ((e.key === 'e' || e.key === 'E') && e.target.getAttribute('contenteditable') !== 'true') {
+                    this.toggleEditMode();
+                }
+                if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                    e.preventDefault();
+                    this.save();
+                }
+            });
+        }
+
+        toggleEditMode() {
+            this.isActive = !this.isActive;
+            document.body.classList.toggle('edit-mode', this.isActive);
+            this.toggleBtn.classList.toggle('active', this.isActive);
+            this.toggleBtn.classList.toggle('show', this.isActive);
+            document.querySelectorAll('.editable').forEach(el => {
+                el.setAttribute('contenteditable', this.isActive ? 'true' : 'false');
+            });
+            if (!this.isActive) this.save();
+        }
+
+        restoreFromStorage() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(this.storageKey) || '[]');
+                const editables = document.querySelectorAll('.editable');
+                saved.forEach((html, i) => { if (editables[i]) editables[i].innerHTML = html; });
+            } catch (err) { /* ignore malformed storage */ }
+        }
+
+        save() {
+            const editables = document.querySelectorAll('.editable');
+            const content = Array.from(editables).map(el => el.innerHTML);
+            localStorage.setItem(this.storageKey, JSON.stringify(content));
+            this.showToast('Saved');
+        }
+
+        showToast(msg) {
+            this.toast.textContent = msg;
+            this.toast.classList.add('show');
+            setTimeout(() => this.toast.classList.remove('show'), 1400);
+        }
+    }
+
+    new SlidePresentation();
+    new InlineEditor();
+</script>
+</body>
+</html>
